@@ -1,6 +1,7 @@
 import sc2
 from sc2 import maps, Difficulty, run_game, Race
-from sc2.constants import NEXUS, PYLON, PROBE, ASSIMILATOR
+from sc2.constants import NEXUS, PYLON, PROBE, ASSIMILATOR, CYBERNETICSCORE, \
+GATEWAY, STALKER, ZEALOT
 from sc2.player import Bot, Computer
 
 class dumbot(sc2.BotAI):
@@ -9,6 +10,8 @@ class dumbot(sc2.BotAI):
 		await self.create_probes()
 		await self.create_pylons()
 		await self.create_assimilators()
+		await self.create_army_buildings()
+		await self.create_army_units()
 		await self.expand()
 
 	async def create_probes(self):
@@ -27,9 +30,31 @@ class dumbot(sc2.BotAI):
 			pos_vespines = self.state.vespene_geyser.closer_than(10.0, nexus)
 			for vespene in pos_vespines:
 				worker = self.select_build_worker(vespene.position)
-				if self.can_afford(ASSIMILATOR) and worker is not None and : 
+				if self.can_afford(ASSIMILATOR) and worker is not None: 
 					if not self.units(ASSIMILATOR).closer_than(1.0, vespene).exists:
 						await self.do(worker.build(ASSIMILATOR, vespene))
+
+	async def create_army_buildings(self):
+		if self.units(PYLON).ready.exists:
+			dest_pylon = self.units(PYLON).ready.random
+			if self.units(GATEWAY).ready.exists:
+				if not self.units(CYBERNETICSCORE).ready.exists and \
+				self.can_afford(CYBERNETICSCORE) and \
+				not self.already_pending(CYBERNETICSCORE):
+					await self.build(CYBERNETICSCORE, near=dest_pylon)
+			else:
+				if self.can_afford(GATEWAY) and not self.already_pending(GATEWAY):
+					await self.build(GATEWAY, near=dest_pylon)
+
+
+	async def create_army_units(self):
+		if self.units(CYBERNETICSCORE).ready.exists:
+			for gw in self.units(GATEWAY).ready.noqueue:
+				if self.can_afford(ZEALOT) and self.supply_left > 0 and self.units(ZEALOT).amount < 10:
+					await self.do(gw.train(ZEALOT))
+				if self.can_afford(STALKER) and self.supply_left > 0:
+					await self.do(gw.train(STALKER))
+
 
 	async def expand(self):
 		if self.units(NEXUS).amount < 3 and self.can_afford(NEXUS):
